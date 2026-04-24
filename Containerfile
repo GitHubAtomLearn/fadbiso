@@ -1,0 +1,18 @@
+ARG REGISTRY=quay.io/fedora-ostree-desktops
+ARG VARIANT=silverblue
+ARG VERSION=44
+ARG SRC_PATH=installer
+
+FROM ${REGISTRY}/${VARIANT}:${VERSION}
+
+ARG REGISTRY
+ARG VARIANT
+ARG VERSION
+ARG SRC_PATH
+
+ENV REGISTRY=${REGISTRY}
+ENV VARIANT=${VARIANT}
+ENV VERSION=${VERSION}
+
+RUN --mount=type=bind,source=${SRC_PATH},target=/src,ro \
+    /src/build.sh
