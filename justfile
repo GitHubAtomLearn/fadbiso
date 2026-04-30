@@ -7,6 +7,9 @@ repository_standard := "quay.io/fedora-ostree-desktops"
 # Sealed container repository for security-hardened builds
 repository_sealed := "quay.io/fedora-atomic-desktops-sealed"
 
+# Joel Capitao container repository
+repository_jcapitao := "quay.io/jcapitao/fedora-atomic-desktop"
+
 # Container image tag base
 # container_tag := "localhost/fedora-" + version + "-iso:" + version
 
@@ -33,14 +36,16 @@ output_dir := "./output"
 all:
     @echo "Please read README.md"
 
+# container type variant repo="standard" version="44":
+
 # Build container image
 # Usage: just container installer silverblue 44
 #        just container live kinoite sealed 45
 [arg('type', pattern='installer|live')]
-[arg('variant', pattern='silverblue|kinoite')]
-[arg('repo', pattern='standard|sealed')]
-[arg('version', pattern='44|45')]
-container type variant repo="standard" version="44":
+[arg('repo', pattern='standard|sealed|jcapitao')]
+[arg('variant', pattern='silverblue|kinoite|sway-atomic')]
+[arg('version', pattern='43|44|45')]
+container type repo variant version:
     #! /usr/bin/env bash
     set -euo pipefail
     set -x
@@ -57,6 +62,8 @@ container type variant repo="standard" version="44":
             repository="{{repository_standard}}"
         elif [[ "{{repo}}" == "sealed" ]]; then
             repository="{{repository_sealed}}"
+        elif [[ "{{repo}}" == "jcapitao" ]]; then
+            repository="{{repository_jcapitao}}"
         fi
 
         local -r container_tag="localhost/fedora-{{variant}}-iso:{{version}}"
@@ -104,12 +111,14 @@ container type variant repo="standard" version="44":
     }
     main "${@}"
 
+# iso variant version="44":
+
 # Build ISO from container image
 # Usage: just iso silverblue
 #        just iso kinoite
-[arg('variant', pattern='silverblue|kinoite')]
-[arg('version', pattern='44|45')]
-iso variant version="44":
+[arg('variant', pattern='silverblue|kinoite|sway-atomic')]
+[arg('version', pattern='43|44|45')]
+iso variant version:
     #! /usr/bin/env bash
     set -euo pipefail
     set -x

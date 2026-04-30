@@ -39,6 +39,11 @@ function main() {
     rm --verbose /usr/lib/systemd/system-generators/systemd-gpt-auto-generator
 
     rm --verbose /usr/lib/systemd/system/autovt@.service
+    # ln: failed to create symbolic link '/usr/lib/systemd/system/autovt@.service': File exists
+    # Simon de Vlieger:
+    # Yea I've seen that; on some containers that symlink already exists and on others it doesn't.
+    # Probably a conditional remove if it exists before the `ln` works best?
+    # At least for now.
     ln --symbolic /usr/lib/systemd/system/anaconda-shell@.service /usr/lib/systemd/system/autovt@.service
 
     mkdir /usr/lib/systemd/logind.conf.d
@@ -100,6 +105,8 @@ EOF
         iso_label="Silverblue"
     elif [[ "${VARIANT}" == "kinoite" ]]; then
         iso_label="Kinoite"
+    elif [[ "${VARIANT}" == "sway-atomic" ]]; then
+        iso_label="Sway"
     fi
 
     # if [[ "${source}" == "sealed" ]]; then
