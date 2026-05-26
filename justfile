@@ -89,7 +89,7 @@ iso variant version:
 
         [[ ! -d "{{output_dir}}" ]] && mkdir --parents "{{output_dir}}"
 
-        local -r bootc_ref="localhost/fedora-{{variant}}-iso:{{version}}-chunked"
+        local -r bootc_ref="localhost/fedora-{{variant}}-iso:{{version}}"
 
         podman container run \
             --pull=newer \
