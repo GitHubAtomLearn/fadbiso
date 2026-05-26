@@ -48,6 +48,16 @@ function main() {
         "${@}"
     }
 
+    # The '/usr/share/grub/unicode.pf2' path must exist in the container
+    # for the `bootc-generic-iso` as the `org.osbuild.grub2.iso` stage
+    # unconditionally tries to copy it.
+    # This normally comes from the `grub2-tools` package.
+    dnf_install grub2-tools
+
+    # We probably want all grubs installed in the container,
+    # so let's add `grub2-pc-modules` as well.
+    dnf_install grub2-pc-modules
+
     # `image-builder` needs `gcdx64.efi`.
     dnf_install grub2-efi-x64-cdboot
 

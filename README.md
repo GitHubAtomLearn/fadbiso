@@ -7,7 +7,7 @@
 ## Prerequisites
 
 - **Podman** (for container operations)
-- **`just`** (command runner; install with `dnf install just`)
+- **`just`** (command runner)
 - **Root access** (required for building images and ISOs)
 - Sufficient disk space (~10GB+) for container builds and ISO generation
 
@@ -16,23 +16,23 @@
 ### Recipe: `container`
 
 **Parameters:**
-- `type` (required): Build image type — `installer` or `live`
-- `variant` (required): Desktop variant — `silverblue` or `kinoite`
-- `repo` (optional): Base image repository — `standard` or `sealed` (defaults to `standard`)
-- `version` (optional): Fedora version — `44` or `45` (defaults to `44`)
+- `type`: Build image type — `installer` or `live`
+- `repo`: Base image repository — `standard` or `sealed`
+- `variant`: Desktop variant — `silverblue` or `kinoite`
+- `version`: Fedora version — `44` or `45`
 
 **Examples:**
 
-Build a Silverblue installer container from the standard repository:
+Build a Silverblue 44 installer container from the standard repository:
 
 ```bash
-sudo just container installer silverblue
+sudo just container installer standard silverblue 44
 ```
 
 Build a Kinoite live container from the sealed repository for Fedora 45:
 
 ```bash
-sudo just container live kinoite sealed 45
+sudo just container live sealed kinoite 45
 ```
 
 ## Building ISOs
@@ -40,8 +40,8 @@ sudo just container live kinoite sealed 45
 ### Recipe: `iso`
 
 **Parameters:**
-- `variant` (required): Desktop variant — `silverblue` or `kinoite`
-- `version` (optional): Fedora version — `44` or `45` (defaults to `44`)
+- `variant`: Desktop variant — `silverblue` or `kinoite`
+- `version`: Fedora version — `44` or `45`
 
 > [!IMPORTANT]
 > You must build the container image before building the ISO. The `iso` recipe references the container image built by the `container` recipe. If you try to build an ISO for a version where no container image exists, the build will fail.
@@ -51,7 +51,7 @@ sudo just container live kinoite sealed 45
 Build container for Fedora 45:
 
 ```bash
-sudo just container installer silverblue 45
+sudo just container installer standard silverblue 45
 ```
 
 Now you can build the ISO for Fedora 45:
@@ -66,7 +66,7 @@ The generated ISO will be located in the `output` directory.
 
 ### Standard: [quay.io/fedora-ostree-desktops](https://quay.io/organization/fedora-ostree-desktops)
 
-Used when `repo` is omitted or explicitly set to `standard`. For standard Fedora Atomic Desktops builds.
+Used when `repo` is set to `standard`. For standard Fedora Atomic Desktops builds.
 
 ### Sealed: [quay.io/fedora-atomic-desktops-sealed](https://quay.io/organization/fedora-atomic-desktops-sealed)
 
@@ -75,7 +75,7 @@ Used when `repo` is set to `sealed`. For security-hardened builds.
 **Example:**
 
 ```bash
-sudo just container live silverblue sealed
+sudo just container live sealed silverblue 44
 ```
 
 > [!IMPORTANT]
@@ -92,13 +92,13 @@ sudo just container live silverblue sealed
 1. Build a container image for the Live ISO:
 
    ```bash
-   sudo just container live silverblue sealed
+   sudo just container live sealed silverblue 44
    ```
 
 2. Build an ISO from the container image:
 
    ```bash
-   sudo just iso silverblue
+   sudo just iso silverblue 44
    ```
 
 3. The generated ISO will be in the `output` directory. Write it to a USB flash drive and boot the machine from it.

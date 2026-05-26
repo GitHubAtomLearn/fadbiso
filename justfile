@@ -1,20 +1,8 @@
-# Fedora version
-# version := "44"
-
 # Default container repository for base images
 repository_standard := "quay.io/fedora-ostree-desktops"
 
 # Sealed container repository for security-hardened builds
 repository_sealed := "quay.io/fedora-atomic-desktops-sealed"
-
-# Joel Capitao container repository
-repository_jcapitao := "quay.io/jcapitao/fedora-atomic-desktop"
-
-# Container image tag base
-# container_tag := "localhost/fedora-" + version + "-iso:" + version
-
-# Reference to the chunked bootable container image
-# bootc_ref := "{{container_tag}}-chunked"
 
 # Default filesystem for bootc ISO builds
 bootc_default_fs := "btrfs"
@@ -28,7 +16,8 @@ chunkah_tag := "dev"
 chunkah_image := chunkah_repository + ":" + chunkah_tag
 
 # `image_builder_cli` image for ISO generation
-image_builder_cli := "ghcr.io/osbuild/image-builder-cli:latest"
+# image_builder_cli := "ghcr.io/osbuild/image-builder-cli:latest"
+image_builder_cli := "ghcr.io/osbuild/image-builder-cli:sha-fac520602df59b6c79189daf05fb6a2acf9a9eea"
 
 # Output directory for generated ISOs
 output_dir := "./output"
@@ -36,15 +25,11 @@ output_dir := "./output"
 all:
     @echo "Please read README.md"
 
-# container type variant repo="standard" version="44":
-
 # Build container image
-# Usage: just container installer silverblue 44
-#        just container live kinoite sealed 45
 [arg('type', pattern='installer|live')]
-[arg('repo', pattern='standard|sealed|jcapitao')]
-[arg('variant', pattern='silverblue|kinoite|sway-atomic')]
-[arg('version', pattern='43|44|45')]
+[arg('repo', pattern='standard|sealed')]
+[arg('variant', pattern='silverblue|kinoite')]
+[arg('version', pattern='44|45')]
 container type repo variant version:
     #! /usr/bin/env bash
     set -euo pipefail
@@ -62,8 +47,6 @@ container type repo variant version:
             repository="{{repository_standard}}"
         elif [[ "{{repo}}" == "sealed" ]]; then
             repository="{{repository_sealed}}"
-        elif [[ "{{repo}}" == "jcapitao" ]]; then
-            repository="{{repository_jcapitao}}"
         fi
 
         local -r container_tag="localhost/fedora-{{variant}}-iso:{{version}}"
@@ -76,48 +59,22 @@ container type repo variant version:
             --build-arg VARIANT={{variant}} \
             --build-arg VERSION={{version}} \
             --build-arg SRC_PATH="{{type}}" \
+            --build-arg CHUNKAH_IMAGE="{{chunkah_image}}" \
+            --skip-unused-stages=false \
+            --volume ${PWD}:/run/src \
             --tag "${container_tag}" \
             --file ./Containerfile
 
-        # Rechunk with Chunkah for optimized layers
-        local -r chunkah_tmp_image="{{variant}}.ociarchive"
-        local -r chunked_image="${container_tag}-chunked"
-        local -r chunkah_config_str=$(podman inspect "${container_tag}")
-
-        podman container run \
-            --pull=newer \
-            --rm \
-            --name chunkah \
-            --mount=type=image,src="${container_tag}",target=/chunkah \
-            --env CHUNKAH_CONFIG_STR="${chunkah_config_str}" \
-            {{chunkah_image}} \
-                build \
-                    --verbose \
-                    --prune /sysroot/ \
-                    --max-layers 128 \
-                    --label ostree.commit- \
-                    --label ostree.final-diffid- \
-                    --skip-special-files \
-                    > ${chunkah_tmp_image}
-
-        local iid=$(podman image load --input ${chunkah_tmp_image})
-        local -r iid=${iid#*sha256:}
-        podman image tag "${iid}" "${chunked_image}"
-
         # Cleanup temporary files and images
-        rm --force ${chunkah_tmp_image}
+        rm --force ./iso.ociarchive
         just cleanup
 
     }
     main "${@}"
 
-# iso variant version="44":
-
 # Build ISO from container image
-# Usage: just iso silverblue
-#        just iso kinoite
-[arg('variant', pattern='silverblue|kinoite|sway-atomic')]
-[arg('version', pattern='43|44|45')]
+[arg('variant', pattern='silverblue|kinoite')]
+[arg('version', pattern='44|45')]
 iso variant version:
     #! /usr/bin/env bash
     set -euo pipefail
@@ -140,7 +97,7 @@ iso variant version:
             --privileged \
             --security-opt label=type:unconfined_t \
             --volume /var/lib/containers/storage:/var/lib/containers/storage \
-            --volume ./output:/output \
+            --volume {{output_dir}}:/output \
             {{image_builder_cli}} \
                 build \
                 --output-dir /output \
