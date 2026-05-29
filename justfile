@@ -1,10 +1,13 @@
-# Default container repository for base images
-repository_standard := "quay.io/fedora-ostree-desktops"
+# Container repository for standard Atomic Desktops
+repository_atomic_desktops := "quay.io/fedora-ostree-desktops"
 
-# Sealed container repository for security-hardened builds
-repository_sealed := "quay.io/fedora-atomic-desktops-sealed"
+# Container repository for security-hardened Sealed Atomic Desktops
+repository_atomic_desktops_sealed := "quay.io/fedora-atomic-desktops-sealed"
 
-# Default filesystem for bootc ISO builds
+# Container repository for base bootc images
+repository_bootc := "quay.io/fedora"
+
+# Default filesystem for ISO builds
 bootc_default_fs := "btrfs"
 
 # osbuild image type for ISO generation
@@ -27,8 +30,8 @@ all:
 
 # Build container image
 [arg('type', pattern='installer|live')]
-[arg('repo', pattern='standard|sealed')]
-[arg('variant', pattern='silverblue|kinoite')]
+[arg('repo', pattern='desktops-standard|desktops-sealed|bootc')]
+[arg('variant', pattern='silverblue|kinoite|fedora-bootc')]
 [arg('version', pattern='44|45')]
 container type repo variant version:
     #! /usr/bin/env bash
@@ -43,13 +46,15 @@ container type repo variant version:
         fi
 
         local repository
-        if [[ "{{repo}}" == "standard" ]]; then
-            repository="{{repository_standard}}"
-        elif [[ "{{repo}}" == "sealed" ]]; then
-            repository="{{repository_sealed}}"
+        if [[ "{{repo}}" == "desktops-standard" ]]; then
+            repository="{{repository_atomic_desktops}}"
+        elif [[ "{{repo}}" == "desktops-sealed" ]]; then
+            repository="{{repository_atomic_desktops_sealed}}"
+        elif [[ "{{repo}}" == "bootc" ]]; then
+            repository="{{repository_bootc}}"
         fi
 
-        local -r container_tag="localhost/fedora-{{variant}}-iso:{{version}}"
+        local -r container_tag="localhost/{{variant}}-{{type}}-iso:{{version}}"
 
         podman image build \
             --pull=newer \
@@ -73,9 +78,10 @@ container type repo variant version:
     main "${@}"
 
 # Build ISO from container image
-[arg('variant', pattern='silverblue|kinoite')]
+[arg('type', pattern='installer|live')]
+[arg('variant', pattern='silverblue|kinoite|fedora-bootc')]
 [arg('version', pattern='44|45')]
-iso variant version:
+iso type variant version:
     #! /usr/bin/env bash
     set -euo pipefail
     set -x
@@ -89,7 +95,7 @@ iso variant version:
 
         [[ ! -d "{{output_dir}}" ]] && mkdir --parents "{{output_dir}}"
 
-        local -r bootc_ref="localhost/fedora-{{variant}}-iso:{{version}}"
+        local -r bootc_ref="localhost/{{variant}}-{{type}}-iso:{{version}}"
 
         podman container run \
             --pull=newer \
@@ -105,6 +111,8 @@ iso variant version:
                 --bootc-default-fs {{bootc_default_fs}} \
                 {{image_type}}
 
+        mv --verbose --force {{output_dir}}/bootc-fedora-{{version}}-bootc-generic-iso-x86_64.iso \
+            {{output_dir}}/{{variant}}-{{type}}-{{version}}.iso
         chown --changes --recursive ${SUDO_USER}: {{output_dir}}
 
         # Cleanup temporary images

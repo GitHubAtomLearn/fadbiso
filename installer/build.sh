@@ -6,23 +6,27 @@ export FORCE_COLUMNS=134
 
 function main() {
 
-    # variant="${VARIANT:-silverblue}"
-    # registry_source="${registry_source:-default}"
+    src_path="${SRC_PATH}"
+    variant="${VARIANT}"
 
-    dnf install --assumeyes \
-        anaconda \
-        anaconda-install-img-deps \
-        anaconda-dracut \
-        dracut-config-generic \
-        dracut-network \
-        net-tools \
-        grub2-efi-x64-cdboot \
-        plymouth \
-        default-fonts-core-sans \
-        default-fonts-other-sans \
-        google-noto-sans-cjk-fonts \
-        xorrisofs \
-        squashfs-tools
+    # Upgrade installed packages.
+    rm --force /etc/yum.repos.d/fedora-cisco-openh264.repo
+    dnf upgrade \
+        --enablerepo=updates-testing \
+        --assumeyes \
+        --refresh \
+        --no-allow-downgrade \
+        --allowerasing
+
+    # Install required packages.
+    dnf --assumeyes --refresh install \
+    --allowerasing \
+    --no-allow-downgrade \
+    --enablerepo=updates-testing \
+    --no-docs --setopt=tsflags=nodocs \
+    --best \
+    --exclude container-selinux \
+        $(grep --extended-regexp --invert-match '^#|^$' /src/payload-packages.txt)
 
     mkdir --parents /boot/efi
     cp --recursive --archive /usr/lib/efi/*/*/EFI /boot/efi
@@ -38,12 +42,7 @@ function main() {
     ln --symbolic /lib/systemd/system/anaconda.target /etc/systemd/system/default.target
     rm --verbose /usr/lib/systemd/system-generators/systemd-gpt-auto-generator
 
-    rm --verbose /usr/lib/systemd/system/autovt@.service
-    # ln: failed to create symbolic link '/usr/lib/systemd/system/autovt@.service': File exists
-    # Simon de Vlieger:
-    # Yea I've seen that; on some containers that symlink already exists and on others it doesn't.
-    # Probably a conditional remove if it exists before the `ln` works best?
-    # At least for now.
+    rm --verbose --force /usr/lib/systemd/system/autovt@.service
     ln --symbolic /usr/lib/systemd/system/anaconda-shell@.service /usr/lib/systemd/system/autovt@.service
 
     mkdir /usr/lib/systemd/logind.conf.d
@@ -59,7 +58,8 @@ function main() {
         --reproducible \
         --no-hostonly \
         --add "anaconda" \
-        "/usr/lib/modules/${kernel}/initramfs.img" "${kernel}"
+        "/usr/lib/modules/${kernel}/initramfs.img" \
+        "${kernel}"
 
     mkdir /etc/systemd/user/pipewire.service.d/
     echo -e "[Unit]\nConditionUser=" > /etc/systemd/user/pipewire.service.d/allowroot.conf
@@ -73,21 +73,9 @@ function main() {
 
     # Determine the registry path and ISO label based on source
     # Determine the registry path based on registry_source
-    # if [[ "${registry_source}" == "sealed" ]]; then
-    #     registry_path="quay.io/fedora-atomic-desktops-sealed"
-    # else
-    #     registry_path="quay.io/fedora-ostree-desktops"
-    # fi
-
-    # echo "REGISTRY=${REGISTRY}"
-    # echo "VARIANT=${VARIANT}"
-    # echo "VERSION=${VERSION}"
-
-
     cat > /usr/share/anaconda/interactive-defaults.ks <<EOF
 bootc --source-imgref registry:${REGISTRY}/${VARIANT}:${VERSION} --target-imgref ${REGISTRY}/${VARIANT}:${VERSION}
 EOF
-# bootc --source-imgref registry:${REGISTRY}/${variant}:${VERSION} --target-imgref ${REGISTRY}/${variant}:${VERSION}
 
     # Some configuration for the ISO.
     # Set the defaults for (bootc-)image-builder.
@@ -95,23 +83,13 @@ EOF
 
     # Set label based on variant.
 
-    # if [[ "${variant}" == "kinoite" ]]; then
-    #     iso_label="Kinoite"
-    # else
-    #     iso_label="Silverblue"
-    # fi
-
     if [[ "${VARIANT}" == "silverblue" ]]; then
         iso_label="Silverblue"
     elif [[ "${VARIANT}" == "kinoite" ]]; then
         iso_label="Kinoite"
-    elif [[ "${VARIANT}" == "sway-atomic" ]]; then
-        iso_label="Sway"
+    elif [[ "${VARIANT}" == "fedora-bootc" ]]; then
+        iso_label="bootc"
     fi
-
-    # if [[ "${source}" == "sealed" ]]; then
-    #     iso_label="${iso_label} Sealed"
-    # fi
 
     # Generate iso.yaml from template.
     cat > /usr/lib/image-builder/bootc/iso.yaml <<EOF
@@ -132,7 +110,8 @@ EOF
     bootc container lint \
         --no-truncate \
         --skip nonempty-boot \
-        --skip baseimage-root
+        --skip baseimage-root \
+        --skip nonempty-run-tmp
 
 }
 main "${@}"

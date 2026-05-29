@@ -1,0 +1,13 @@
+anaconda
+anaconda-install-img-deps
+anaconda-dracut
+dracut-config-generic
+dracut-network
+net-tools
+grub2-efi-x64-cdboot
+default-fonts-core-sans
+default-fonts-other-sans
+google-noto-sans-cjk-fonts
+xorrisofs
+squashfs-tools
+# plymouth
